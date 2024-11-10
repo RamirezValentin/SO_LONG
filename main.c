@@ -4,7 +4,20 @@
 #define MLX_ERROR       1
 #define WINDOW_WIDTH    800
 #define WINDOW_HEIGHT   800
-// #define NUM_IMAGES      2
+
+// #ifndef NUM_IMAGES
+// #  define NUM_IMAGES 5
+// #endif
+
+
+// enum e_image_type
+// {
+//     FLOOR,
+//     WALL,
+//     COIN,
+//     EXIT,
+//     PLAYER
+// };
 
 // typedef struct s_image
 // {
@@ -14,13 +27,26 @@
 //     int     img_height;
 // }           t_image;
 
+// typedef struct s_map {
+//     char **map;
+//     int width;
+//     int height;
+// } t_map;
+
+// typedef struct s_player {
+//     int x;
+//     int y;
+//     int moves;
+// } t_player;
+
 // typedef struct  s_data
 // {
 //     void        *mlx_ptr;
 //     void        *win_ptr;
 //     t_image     images[NUM_IMAGES];
+//     t_map       map;
+//     t_player    player;
 // }               t_data;
-
 
 
 
@@ -39,51 +65,37 @@ int ft_clean(t_data *data)
         free(data->mlx_ptr);
         data->mlx_ptr = NULL;
     }
+    free_map(&data->map);
     exit(0);
 }
 
-void display_map(t_data *data, const char *file_path)
+void display_map(t_data *data)
 {
-    int fd = open(file_path, O_RDONLY);
-    if (fd < 0)
-        return;
-
-    char *line;
-    int y = 0;
-    while ((line = get_next_line(fd)) != NULL)
+    for (int y = 0; y < data->map.height; y++)
     {
-        for (int x = 0; line[x] != '\0'; x++)
+        for (int x = 0; data->map.map[y][x] != '\0'; x++)
         {
-            if (line[x] == '0')
+            if (data->map.map[y][x] == '0')
                 mlx_put_image_to_window(data->mlx_ptr, data->win_ptr, data->images[0].img, x * data->images[0].img_width, y * data->images[0].img_height);
-            else if(line[x] == '1')
+            else if (data->map.map[y][x] == '1')
                 mlx_put_image_to_window(data->mlx_ptr, data->win_ptr, data->images[1].img, x * data->images[1].img_width, y * data->images[1].img_height);
-            else if(line[x] == 'C')
+            else if (data->map.map[y][x] == 'C')
                 mlx_put_image_to_window(data->mlx_ptr, data->win_ptr, data->images[2].img, x * data->images[2].img_width, y * data->images[2].img_height);
-            else if(line[x] == 'E')
+            else if (data->map.map[y][x] == 'E')
                 mlx_put_image_to_window(data->mlx_ptr, data->win_ptr, data->images[3].img, x * data->images[3].img_width, y * data->images[3].img_height);
-            else if(line[x] == 'P')
+            else if (data->map.map[y][x] == 'P')
                 mlx_put_image_to_window(data->mlx_ptr, data->win_ptr, data->images[4].img, x * data->images[4].img_width, y * data->images[4].img_height);
         }
-        free(line);
-        y++;
     }
-    close(fd);
 }
-
-
-
 
 int close_window_esc(int keysym, t_data *data)
 {
     if (keysym == XK_Escape)
         ft_clean(data);
 
-
     return (0);
 }
-
-
 
 int init_image(t_data *data, int index, char *path) {
     data->images[index].relative_path = path;
@@ -114,12 +126,124 @@ void find_player_position(t_map *map, t_player *player) {
     perror("Erreur : Pas de position de départ pour le joueur.\n");
 }
 
+// void find_number_coins(t_map *map, t_player *player) {
+//     for (int y = 0; y < map->height; y++) {
+//         for (int x = 0; x < map->width; x++) {
+//             if (map->map[y][x] == 'P') {
+//                 player->x = x;
+//                 player->y = y;
+//                 player->moves = 0; 
+//                 printf("Position initiale du joueur trouvée : (%d, %d)\n", x, y);
+//                 return;
+//             }
+//         }
+//     }
+//     perror("Erreur : Pas de position de départ pour le joueur.\n");
+// }
+
+
+
+int count_lines(const char *filename) {
+    int fd = open(filename, O_RDONLY);
+    if (fd < 0)
+        return -1; 
+
+    int lines = 0;
+    char *line;
+
+    while ((line = get_next_line(fd)) != NULL) {
+        lines++;
+        free(line); 
+    }
+    close(fd);
+    return lines;
+}
+
+int init_map(t_map *map, const char *filename) {
+    map->height = count_lines(filename);
+    if (map->height <= 0)
+        return -1; 
+
+    map->map = malloc(sizeof(char *) * (map->height + 1));
+    if (!map->map)
+        return -1; 
+
+    map->map[map->height] = NULL; // Pour marquer la fin du tableau (Dans cet exemple, height est égal à 5, donc map->map contiendra 5 pointeurs vers des chaînes de caractères valides, et le 6ème pointeur (index 5) sera NULL)
+    return 0; 
+}
+
+int load_map(t_map *map, const char *filename) {
+    int fd = open(filename, O_RDONLY);
+    if (fd < 0) return -1; 
+
+    char *line;
+    int row = 0;
+
+    while ((line = get_next_line(fd)) != NULL) {
+        map->map[row] = line; 
+        row++;
+    }
+    close(fd);
+
+    // Détermine la largeur (nombre de colonnes) de la première ligne
+    if (map->height > 0 && map->map[0] != NULL)
+        map->width = strlen(map->map[0]) - 2; // -1 pour ignorer le '\n'
+
+    return 0;
+}
+
+int init_and_load_map(t_map *map, const char *filename) {
+    if (init_map(map, filename) < 0) {
+        perror("Erreur lors de l'initialisation de la carte");
+        return -1;
+    }
+    if (load_map(map, filename) < 0) {
+        perror("Erreur lors du chargement de la carte");
+        return -1;
+    }
+    return 0;
+}
+
+// Libère la mémoire allouée pour la carte
+void free_map(t_map *map) {
+    for (int i = 0; i < map->height; i++) {
+        free(map->map[i]);
+    }
+    free(map->map);
+}
+
+void move_player(t_data *data, int new_x, int new_y) {
+    if (new_x >= 0 && new_x < data->map.width && new_y >= 0 && new_y < data->map.height) {
+        if (data->map.map[new_y][new_x] != '1') { // Vérifie que la nouvelle position n'est pas un mur
+            data->map.map[data->player.y][data->player.x] = '0'; // Efface l'ancienne position du joueur
+            data->player.x = new_x;
+            data->player.y = new_y;
+            data->map.map[new_y][new_x] = 'P'; // Met à jour la nouvelle position du joueur
+            data->player.moves++;
+            printf("Player moved to (%d, %d). Total moves: %d\n", new_x, new_y, data->player.moves);
+            display_map(data); // Redessine la carte
+        }
+    }
+}
+
+int handle_keypress(int keysym, t_data *data) {
+    if (keysym == XK_w || keysym == XK_Up) {
+        move_player(data, data->player.x, data->player.y - 1); // Déplace vers le haut
+    } else if (keysym == XK_a || keysym == XK_Left) {
+        move_player(data, data->player.x - 1, data->player.y); // Déplace vers la gauche
+    } else if (keysym == XK_s || keysym == XK_Down) {
+        move_player(data, data->player.x, data->player.y + 1); // Déplace vers le bas
+    } else if (keysym == XK_d || keysym == XK_Right) {
+        move_player(data, data->player.x + 1, data->player.y); // Déplace vers la droite  DATA EST DEJA UN POINTEUR VERS DATA ALORS PAS BESOIN DE DONNER L ADRESSE
+    } else if (keysym == XK_Escape) {
+        ft_clean(data); // Ferme la fenêtre si la touche Échap est pressée
+    }
+    return 0;
+}
 
 int main()
 {
     t_data  data;
-    t_map map;
-    t_player player;
 
     ft_bzero(&data, sizeof(t_data));
     data.mlx_ptr = mlx_init();
@@ -140,22 +264,23 @@ int main()
     init_image(&data, EXIT, "/home/ramir/Ramirez/so_long/images/exit.xpm");
     init_image(&data, PLAYER, "/home/ramir/Ramirez/so_long/images/player.xpm");
 
-    display_map(&data, "/home/ramir/Ramirez/so_long/map/map.ber");
 
     //chargé `map.map`, `map.width` et `map.height`
-    init_and_load_map(&map, "/home/ramir/Ramirez/so_long/map/map.ber");
+    if (init_and_load_map(&data.map, "/home/ramir/Ramirez/so_long/map/map.ber") < 0) {
+        return (MLX_ERROR);
+    }
 
     // Affiche la carte pour vérifier
-    printf("Carte chargée avec dimensions : largeur = %d, hauteur = %d\n", map.width, map.height);
-    for (int i = 0; i < map.height; i++)
-        printf("%s", map.map[i]);
+    printf("Carte chargée avec dimensions : largeur = %d, hauteur = %d\n", data.map.width, data.map.height);
+    for (int i = 0; i < data.map.height; i++)
+        printf("%s", data.map.map[i]);
     
-    find_player_position(&map, &player);
+    find_player_position(&data.map, &data.player);
 
-    // Libère la mémoire une fois terminé
-    free_map(&map);
+    display_map(&data);
+   
 
-    mlx_hook(data.win_ptr, 2, 1L<<0, close_window_esc, &data); // KeyPress / KeyPressMask
+    mlx_hook(data.win_ptr, 2, 1L<<0, handle_keypress, &data); // KeyPress / KeyPressMask
     mlx_hook(data.win_ptr, 33, 1L<<17, ft_clean, &data); // ClientMessage / StructureNotifyMask
     mlx_loop(data.mlx_ptr);
     return (0);
