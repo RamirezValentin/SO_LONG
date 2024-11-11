@@ -52,6 +52,7 @@
 
 
 
+
 int ft_clean(t_data *data)
 {
     for(int i = 0; i < NUM_IMAGES; i++)
@@ -141,6 +142,94 @@ int find_number_coins(t_map *map) {
     return total_coins;
 }
 
+int valid_map(t_map *map){
+    //toutes les lignes de la meme tailles
+    for(int y = 0; y < map->height -1; y++){
+        if(ft_strlen(map->map[0]) -1 != ft_strlen(map->map[y])-1)
+        {
+            printf("invalid map pas carré\n");
+            return -1;
+        }
+    }
+    if(ft_strlen(map->map[0]) -2 != ft_strlen(map->map[map->height - 1]))
+    {
+        printf("invalid map pas carré1\n");
+        return -1;
+    }
+    //premiere et derniere ligne remplie de 1 
+
+    printf("CCCCCCC%cCCCCCCC\n",map->map[0][0]);
+    printf("CCCCCCC%cCCCCCCC\n",map->map[0][1]);
+    printf("CCCCCCC%cCCCCCCC\n",map->map[0][2]);
+    printf("CCCCCCC%cCCCCCCC\n",map->map[0][3]);
+    printf("CCCCCCC%cCCCCCCC\n",map->map[0][4]);
+    printf("CCCCCCC%cCCCCCCC\n",map->map[0][5]);
+    printf("CCCCCCC%cCCCCCCC\n",map->map[0][6]);
+    printf("CCCCCCC%cCCCCCCC\n",map->map[0][7]);
+    printf("CCCCCCC%ldCCCCCCC\n",ft_strlen(map->map[0]));
+
+
+    for(int x = 0; x < (int)strlen(map->map[0]) - 2; x++){
+        if(map->map[0][x] != '1')
+        {
+            printf("pas mur\n");
+            return -1;
+        }
+    }
+
+
+    //Derniere ligne remplie de 1
+
+    for(int x = 0; x < (int)ft_strlen(map->map[0]) - 2; x++){
+        if(map->map[map->height-1][x] != '1')
+        {
+            printf("pas mur\n");
+            return -1;
+        }
+    }
+
+
+    //premiere colonne remplie de 1 
+    for (int y = 0; y < map->height - 1; y++) {
+        if (map->map[y][0] != '1') 
+        {
+        printf("BUG\n");
+        return -1;
+        }
+    }
+
+    //derniere colonne remplie de 1
+        // printf("BBBBB%dBBB\n", map->width);
+        // // printf("CCCCCCC%sCCCCCCC\n",map->map[0]);
+        // // printf("CCCCCCC%cCCCCCCC\n",map->map[0][0]);
+        // // printf("CCCCCCC%cCCCCCCC\n",map->map[0][1]);
+        // // printf("CCCCCCC%cCCCCCCC\n",map->map[0][2]);
+        // // printf("CCCCCCC%cCCCCCCC\n",map->map[0][3]);
+        // // printf("CCCCCCC%cCCCCCCC\n",map->map[0][4]);
+        // // printf("CCCCCCC%cCCCCCCC\n",map->map[0][5]);
+        // // printf("CCCCCCC%cCCCCCCC\n",map->map[0][6]);
+        // // printf("CCCCCCC%cCCCCCCC\n",map->map[0][7]);
+
+
+        // printf("CCCCCCC%cCCCCCCC\n",map->map[1][6]);
+        // printf("CCCCCCC%cCCCCCCC\n",map->map[2][7]);
+        // printf("CCCCCCC%cCCCCCCC\n",map->map[3][7]);
+        //  for (int i = 0; i < map->height; i++)
+        // printf("%s", map->map[i]);
+
+    for ( int y = 0; y < map->height - 1; y++)
+    {
+        // printf("AAAAAAA%cAAAAAAA",map->map[y][(map->width) - 1]);
+        if(map->map[y][(map->width) - 1] != '1')
+        {
+        printf("ALLED\n");
+        return -1;
+        }
+
+    }
+    return 0;
+}
+
 
 
 int count_lines(const char *filename) {
@@ -187,7 +276,7 @@ int load_map(t_map *map, const char *filename) {
 
     // Détermine la largeur (nombre de colonnes) de la première ligne
     if (map->height > 0 && map->map[0] != NULL)
-        map->width = strlen(map->map[0]) - 2; // -1 pour ignorer le '\n'
+        map->width = strlen(map->map[0]) - 2; // -1 pour ignorer le '\n' AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
     return 0;
 }
@@ -233,7 +322,6 @@ void move_player(t_data *data, int new_x, int new_y) {
             data->player.moves++;
             printf("Player moved to (%d, %d). Total moves: %d\n", new_x, new_y, data->player.moves);
             printf("\x1b[32m" "GAME END\n" "\x1b[0m");
-            sleep(1);
             ft_clean(data);
         }
     }
@@ -278,6 +366,7 @@ int main()
     init_image(&data, PLAYER, "/home/ramir/Ramirez/so_long/images/player.xpm");
 
 
+
     //chargé `map.map`, `map.width` et `map.height`
     if (init_and_load_map(&data.map, "/home/ramir/Ramirez/so_long/map/map.ber") < 0) {
         return (MLX_ERROR);
@@ -287,7 +376,12 @@ int main()
     printf("Carte chargée avec dimensions : largeur = %d, hauteur = %d\n", data.map.width, data.map.height);
     for (int i = 0; i < data.map.height; i++)
         printf("%s", data.map.map[i]);
-    
+
+
+    if(valid_map(&data.map) < 0){
+        return (MLX_ERROR);
+    }
+
     find_player_position(&data.map, &data.player);
     data.total_coins = find_number_coins(&data.map);
 
