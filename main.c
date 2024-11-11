@@ -43,6 +43,8 @@
 // {
 //     void        *mlx_ptr;
 //     void        *win_ptr;
+//     int         total_coins;
+//     int         coins;
 //     t_image     images[NUM_IMAGES];
 //     t_map       map;
 //     t_player    player;
@@ -126,20 +128,18 @@ void find_player_position(t_map *map, t_player *player) {
     perror("Erreur : Pas de position de départ pour le joueur.\n");
 }
 
-// void find_number_coins(t_map *map, t_player *player) {
-//     for (int y = 0; y < map->height; y++) {
-//         for (int x = 0; x < map->width; x++) {
-//             if (map->map[y][x] == 'P') {
-//                 player->x = x;
-//                 player->y = y;
-//                 player->moves = 0; 
-//                 printf("Position initiale du joueur trouvée : (%d, %d)\n", x, y);
-//                 return;
-//             }
-//         }
-//     }
-//     perror("Erreur : Pas de position de départ pour le joueur.\n");
-// }
+int find_number_coins(t_map *map) {
+    int total_coins = 0;
+    for (int y = 0; y < map->height; y++) {
+        for (int x = 0; x < map->width; x++) {
+            if (map->map[y][x] == 'C') {
+                total_coins++;
+            }
+        }
+    }
+    printf("nombre total de pieces : %d\n", total_coins);
+    return total_coins;
+}
 
 
 
@@ -214,7 +214,12 @@ void free_map(t_map *map) {
 
 void move_player(t_data *data, int new_x, int new_y) {
     if (new_x >= 0 && new_x < data->map.width && new_y >= 0 && new_y < data->map.height) {
-        if (data->map.map[new_y][new_x] != '1') { // Vérifie que la nouvelle position n'est pas un mur
+        if (data->map.map[new_y][new_x] != '1' && data->map.map[new_y][new_x] != 'E') { // Vérifie que la nouvelle position n'est pas un mur
+            if(data->map.map[new_y][new_x] == 'C'){
+            data->coins++;
+            printf("\x1b[33m" "A new coin collected u got %d on %d\n" "\x1b[0m", data->coins, data->total_coins);
+            }
+            
             data->map.map[data->player.y][data->player.x] = '0'; // Efface l'ancienne position du joueur
             data->player.x = new_x;
             data->player.y = new_y;
@@ -222,6 +227,14 @@ void move_player(t_data *data, int new_x, int new_y) {
             data->player.moves++;
             printf("Player moved to (%d, %d). Total moves: %d\n", new_x, new_y, data->player.moves);
             display_map(data); // Redessine la carte
+        }
+        if (data->map.map[new_y][new_x] == 'E' && data->coins == data->total_coins)
+        {
+            data->player.moves++;
+            printf("Player moved to (%d, %d). Total moves: %d\n", new_x, new_y, data->player.moves);
+            printf("\x1b[32m" "GAME END\n" "\x1b[0m");
+            sleep(1);
+            ft_clean(data);
         }
     }
 }
@@ -276,6 +289,7 @@ int main()
         printf("%s", data.map.map[i]);
     
     find_player_position(&data.map, &data.player);
+    data.total_coins = find_number_coins(&data.map);
 
     display_map(&data);
    
