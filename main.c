@@ -2,8 +2,6 @@
 #include <string.h>
 
 #define MLX_ERROR       1
-#define WINDOW_WIDTH    800
-#define WINDOW_HEIGHT   800
 
 // #ifndef NUM_IMAGES
 // #  define NUM_IMAGES 5
@@ -158,15 +156,15 @@ int valid_map(t_map *map){
     }
     //premiere et derniere ligne remplie de 1 
 
-    printf("CCCCCCC%cCCCCCCC\n",map->map[0][0]);
-    printf("CCCCCCC%cCCCCCCC\n",map->map[0][1]);
-    printf("CCCCCCC%cCCCCCCC\n",map->map[0][2]);
-    printf("CCCCCCC%cCCCCCCC\n",map->map[0][3]);
-    printf("CCCCCCC%cCCCCCCC\n",map->map[0][4]);
-    printf("CCCCCCC%cCCCCCCC\n",map->map[0][5]);
-    printf("CCCCCCC%cCCCCCCC\n",map->map[0][6]);
-    printf("CCCCCCC%cCCCCCCC\n",map->map[0][7]);
-    printf("CCCCCCC%ldCCCCCCC\n",ft_strlen(map->map[0]));
+    // printf("CCCCCCC%cCCCCCCC\n",map->map[0][0]);
+    // printf("CCCCCCC%cCCCCCCC\n",map->map[0][1]);
+    // printf("CCCCCCC%cCCCCCCC\n",map->map[0][2]);
+    // printf("CCCCCCC%cCCCCCCC\n",map->map[0][3]);
+    // printf("CCCCCCC%cCCCCCCC\n",map->map[0][4]);
+    // printf("CCCCCCC%cCCCCCCC\n",map->map[0][5]);
+    // printf("CCCCCCC%cCCCCCCC\n",map->map[0][6]);
+    // printf("CCCCCCC%cCCCCCCC\n",map->map[0][7]);
+    // printf("CCCCCCC%ldCCCCCCC\n",ft_strlen(map->map[0]));
 
 
     for(int x = 0; x < (int)strlen(map->map[0]) - 2; x++){
@@ -351,7 +349,18 @@ int main()
     if (data.mlx_ptr == NULL)
         return (MLX_ERROR);
 
-    data.win_ptr = mlx_new_window(data.mlx_ptr, WINDOW_WIDTH, WINDOW_HEIGHT, "MLX Window");
+    //chargé `map.map`, `map.width` et `map.height`
+    if (init_and_load_map(&data.map, "/home/ramir/Ramirez/so_long/map/map.ber") < 0) {
+        return (MLX_ERROR);
+    }
+
+    // Affiche la carte pour vérifier
+    printf("Carte chargée avec dimensions : largeur = %d, hauteur = %d\n", data.map.width, data.map.height);
+
+    int winodw_width = data.map.width * 42;
+    int window_height = data.map.height * 42;
+
+    data.win_ptr = mlx_new_window(data.mlx_ptr, winodw_width, window_height, "MLX Window");
     if (data.win_ptr == NULL)
     {   
         mlx_destroy_display(data.mlx_ptr);
@@ -366,14 +375,6 @@ int main()
     init_image(&data, PLAYER, "/home/ramir/Ramirez/so_long/images/player.xpm");
 
 
-
-    //chargé `map.map`, `map.width` et `map.height`
-    if (init_and_load_map(&data.map, "/home/ramir/Ramirez/so_long/map/map.ber") < 0) {
-        return (MLX_ERROR);
-    }
-
-    // Affiche la carte pour vérifier
-    printf("Carte chargée avec dimensions : largeur = %d, hauteur = %d\n", data.map.width, data.map.height);
     for (int i = 0; i < data.map.height; i++)
         printf("%s", data.map.map[i]);
 
