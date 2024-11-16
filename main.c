@@ -27,6 +27,7 @@
 
 // typedef struct s_map {
 //     char **map;
+//     char **copy_map;
 //     int width;
 //     int height;
 // } t_map;
@@ -50,7 +51,6 @@
 
 
 
-
 int ft_clean(t_data *data)
 {
     for(int i = 0; i < NUM_IMAGES; i++)
@@ -67,6 +67,7 @@ int ft_clean(t_data *data)
         data->mlx_ptr = NULL;
     }
     free_map(&data->map);
+    free_copy_map(&data->map);
     exit(0);
 }
 
@@ -299,6 +300,14 @@ void free_map(t_map *map) {
     free(map->map);
 }
 
+// Libère la mémoire allouée pour la carte temporaire utilisé pour le flood fill
+void free_copy_map(t_map *map) {
+    for (int i = 0; i < map->height; i++) {
+        free(map->copy_map[i]);
+    }
+    free(map->copy_map);
+}
+
 void move_player(t_data *data, int new_x, int new_y) {
     if (new_x >= 0 && new_x < data->map.width && new_y >= 0 && new_y < data->map.height) {
         if (data->map.map[new_y][new_x] != '1' && data->map.map[new_y][new_x] != 'E') { // Vérifie que la nouvelle position n'est pas un mur
@@ -340,6 +349,84 @@ int handle_keypress(int keysym, t_data *data) {
     return 0;
 }
 
+
+// Copie la carte pour que le flood fill puisse fonctionner sans modifier l'original
+char **copy_map(t_map *map) {
+    char **copy = malloc(sizeof(char *) * (map->height + 1));
+    if (!copy) return NULL;
+
+    for (int i = 0; i < map->height; i++) {
+        copy[i] = strdup(map->map[i]);
+        if (!copy[i]) {
+            for (int j = 0; j < i; j++) free(copy[j]);
+            free(copy);
+            return NULL;
+        }
+    }
+    copy[map->height] = NULL;
+    return copy;
+}
+
+
+void flood_fill(char **copy_map, int x, int y) {
+    // Si la position actuelle est hors de la carte ou déjà visitée, on quitte
+    if (y < 0 || x < 0 || copy_map[y] == NULL || copy_map[y][x] == '\0' || copy_map[y][x] == '1' || copy_map[y][x] == 'V') {
+        return;
+    }
+
+    // Marquer la case comme visitée
+    copy_map[y][x] = 'V';
+
+    // Remplir les cases adjacentes
+    flood_fill(copy_map, x + 1, y);  // Droite
+    flood_fill(copy_map, x - 1, y);  // Gauche
+    flood_fill(copy_map, x, y + 1);  // Bas
+    flood_fill(copy_map, x, y - 1);  // Haut
+}
+
+
+int is_path_valid(t_map *map, int player_x, int player_y) {
+    // Crée une copie de la carte
+    map->copy_map = copy_map(map);
+    if (!map->copy_map) return 0;
+
+    // //print la map copy
+    printf("\nla copy_map : \n");
+    for (int i = 0; i < map->height; i++)
+        printf("\x1b[32m" "%s" "\x1b[0m", map->copy_map[i]);
+
+
+
+    // Applique flood fill depuis la position initiale du joueur
+    printf("position joueur avant flood_fill x : %d et y : %d", player_x, player_y);
+    flood_fill(map->copy_map, player_x, player_y);
+
+
+    //print la map copy apres le flood fill
+        printf("\naprès flood fill : \n");
+    for (int i = 0; i < map->height; i++)
+        printf("\x1b[34m" "%s" "\x1b[0m", map->copy_map[i]);
+
+
+    // Vérifie si tous les 'C' et 'E' ont été atteints
+    int valid = 1;
+    for (int y = 0; y < map->height && valid == 1; y++) {
+        for (int x = 0; map->copy_map[y][x] != '\0'; x++) {
+            if (map->copy_map[y][x] == 'C' || map->copy_map[y][x] == 'E') {
+                valid = 0;  // Il reste un élément inatteignable
+                break;
+            }
+        }
+    }
+
+    // Libère la mémoire de la carte temporaire
+    return valid;
+}
+
+
+
+
+
 int main()
 {
     t_data  data;
@@ -374,7 +461,8 @@ int main()
     init_image(&data, EXIT, "/home/ramir/Ramirez/so_long/images/exit.xpm");
     init_image(&data, PLAYER, "/home/ramir/Ramirez/so_long/images/player.xpm");
 
-
+    //print la map original
+    printf("\nla map de base : \n");
     for (int i = 0; i < data.map.height; i++)
         printf("%s", data.map.map[i]);
 
@@ -383,8 +471,16 @@ int main()
         return (MLX_ERROR);
     }
 
+
     find_player_position(&data.map, &data.player);
     data.total_coins = find_number_coins(&data.map);
+
+    if(is_path_valid(&data.map, data.player.x, data.player.y) == 0)
+    {
+    printf("Erreur: Impossible d'atteindre tous les objectifs depuis la position actuelle.\n");
+    ft_clean(&data);
+    return (MLX_ERROR);
+    }
 
     display_map(&data);
    
