@@ -71,6 +71,25 @@ int ft_clean(t_data *data)
     exit(0);
 }
 
+int ft_clean_without_copy_map(t_data *data)
+{
+     for(int i = 0; i < NUM_IMAGES; i++)
+    {
+        if (data->images[i].img)
+            mlx_destroy_image(data->mlx_ptr, data->images[i].img);
+    }
+    if (data->win_ptr)
+        mlx_destroy_window(data->mlx_ptr, data->win_ptr);
+    if (data->mlx_ptr)
+    {
+        mlx_destroy_display(data->mlx_ptr);
+        free(data->mlx_ptr);
+        data->mlx_ptr = NULL;
+    }
+    free_map(&data->map);
+    exit(0);
+}
+
 void display_map(t_data *data)
 {
     for (int y = 0; y < data->map.height; y++)
@@ -229,7 +248,27 @@ int valid_map(t_map *map){
     return 0;
 }
 
+int valid_number_elements(t_map *map)
+{
+    int coins = 0;
+    int exit = 0;
+    int player = 0;
 
+    for(int y = 0; y < map->height; y++)
+    {
+        for(int x = 0; map->map[y][x] != '\0'; x++)
+        {
+            if(map->map[y][x] == 'C')coins++;
+            if(map->map[y][x] == 'E')exit++;
+            if(map->map[y][x] == 'P')player++;
+        }
+    }
+
+    if(coins == 0 || exit != 1 || player == 0)
+        return 0;
+    
+    return 1;
+}
 
 int count_lines(const char *filename) {
     int fd = open(filename, O_RDONLY);
@@ -499,9 +538,16 @@ int main()
 
 
     if(valid_map(&data.map) < 0){
+        ft_clean_without_copy_map(&data);
         return (MLX_ERROR);
     }
 
+    if(valid_number_elements(&data.map) == 0)
+    {
+        printf("pas player ou pas coins ou pas exit looser");
+        ft_clean_without_copy_map(&data);
+        return (MLX_ERROR);
+    }
 
     find_player_position(&data.map, &data.player);
     data.total_coins = find_number_coins(&data.map);
