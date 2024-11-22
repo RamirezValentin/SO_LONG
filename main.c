@@ -172,7 +172,7 @@ int find_number_coins(t_map *map)
 
 int valid_map(t_map *map)
 {
-    //toutes les lignes de la meme tailles
+    //verif que toutes les lignes soient de la meme tailles (pour le -1 c'est qu'on ne veut pas prendre la derniere ligne de la carte dans cette boucle(si pas compris regarder le prochain commentaire) et pour ca on met tant que y < que la derniere ligne ca veut dire que la boucle ne passera jamais sur la derinere ligne car ce n est pas =<)
     for(int y = 0; y < map->height -1; y++)
     {
         if(ft_strlen(map->map[0]) -1 != ft_strlen(map->map[y])-1)
@@ -181,7 +181,8 @@ int valid_map(t_map *map)
             return -1;
         }
     }
-    //il y avait un bug sur la derniere ligne ou ca détectais un caractère en trop alors c'est pour ca qu'il faut faire ce if a part pour la derniere ligne avec strlen -2
+
+    //il y avait un bug sur toutes lignes sauf la derniere ou ca détectais un caractère en trop alors c'est pour ca qu'il faut faire ce if a part pour la derniere ligne avec strlen -2 au lieu de strlen -1
     if(ft_strlen(map->map[0]) -2 != ft_strlen(map->map[map->height - 1]))
     {
         printf("invalid map pas carré1\n");
@@ -231,6 +232,7 @@ int valid_number_elements(t_map *map)
     int exit = 0;
     int player = 0;
 
+    //pas besoin de mettre map->height - 1 car c'est plus petit que map->height donc on n'atteinds jamais la derniere ligne qui a été initialisé à NULL au préalable
     for(int y = 0; y < map->height; y++)
     {
         for(int x = 0; map->map[y][x] != '\0'; x++)
@@ -241,7 +243,7 @@ int valid_number_elements(t_map *map)
         }
     }
 
-    if(coins == 0 || exit != 1 || player == 0)
+    if(coins == 0 || exit != 1 || player != 1)
         return -1;
 
     return 0;
@@ -271,11 +273,17 @@ int init_map(t_map *map, const char *filename)
     if (map->height <= 0)
         return -1; 
 
-    map->map = malloc(sizeof(char *) * (map->height + 1));
+    map->map = malloc(sizeof(char *) * (map->height + 1)); //pas sur d'avoir compris pourquoi on doit mettre sizeif(char *) et pas sizeof(char **) ?
     if (!map->map)
         return -1; 
 
     map->map[map->height] = NULL; // Pour marquer la fin du tableau (Dans cet exemple, height est égal à 5, donc map->map contiendra 5 pointeurs vers des chaînes de caractères valides, et le 6ème pointeur (index 5) sera NULL)
+    // Voici un exemple : si map->height = 7 (par exemple une carte de 7 lignes) :
+        // la mémoire alloué par le malloc (map->map = malloc(sizeof(char *) * (map->height + 1));) pour map->map contient 8 pointeurs (map->height + 1) == ( 7 + 1 ) == ( 8 ).
+        // les indices accessibles dans le tableau vont de 0 à 7 :
+            //Indices 0 à 6 : servent à stocker les 7 lignes de la carte.
+            //indice 7 : est l'espace supplémentaire pour le NULL.
+    //Ainsi, pour marquer la fin du tableau, on place le NULL dans map->map[map->height], soit le 8ème pointeur (indice 7 dans cet exemple).
     return 0; 
 }
 
@@ -303,11 +311,13 @@ int load_map(t_map *map, const char *filename)
 
 int init_and_load_map(t_map *map, const char *filename)
 {
+    //défini map->height + alloue de la méméoir pour map->map et met le dernier tableau de map->map à NULL
     if (init_map(map, filename) < 0)
     {
         printf("Erreur lors de l'initialisation de la carte");
         return -1;
     }
+    //remplie map->map et défini map->width
     if (load_map(map, filename) < 0)
     {
         printf("Erreur lors du chargement de la carte");
@@ -449,7 +459,7 @@ int is_path_valid(t_map *map, int player_x, int player_y)
 
     flood_fill_coins(map->copy_map, player_x, player_y);
 
-    // Vérifie si tous les 'C' et 'E' ont été atteints
+    // Vérifie si tous les 'C' ont été atteints en comptant 'E' comme un mur
     int valid = 1;
     for (int y = 0; y < map->height && valid == 1; y++)
     {
@@ -555,7 +565,7 @@ int main()
     display_map(&data);
    
     mlx_hook(data.win_ptr, 2, 1L<<0, handle_keypress, &data); // KeyPress / KeyPressMask
-    mlx_hook(data.win_ptr, 33, 1L<<17, ft_clean, &data); // ClientMessage / StructureNotifyMask
+    mlx_hook(data.win_ptr, 33, 1L<<17, ft_clean, &data); // ClientMessage / StructureNotifyMask (en gros quand on appuies sur la croix)  //pas compris comment on lis CLientMessage à ON_DESTROY dans la doc ?
     mlx_loop(data.mlx_ptr);
     return (0);
 }
