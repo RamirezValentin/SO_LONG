@@ -4,7 +4,7 @@
 #define MLX_ERROR       1
 
 // #ifndef NUM_IMAGES
-// #  define NUM_IMAGES 5
+// #  define NUM_IMAGES 4
 // #endif
 
 
@@ -53,6 +53,7 @@
 
 int ft_clean(t_data *data)
 {
+    free_sprites(data);
     for(int i = 0; i < NUM_IMAGES; i++)
     {
         if (data->images[i].img)
@@ -73,6 +74,7 @@ int ft_clean(t_data *data)
 
 int ft_clean_without_copy_map(t_data *data)
 {
+    free_sprites(data);
      for(int i = 0; i < NUM_IMAGES; i++)
     {
         if (data->images[i].img)
@@ -90,6 +92,21 @@ int ft_clean_without_copy_map(t_data *data)
     exit(0);
 }
 
+
+void free_sprites(t_data *data)
+{
+    for (int i = 0; i < 3; i++)
+    {
+        if (data->animation.sprite[i])
+        {
+            mlx_destroy_image(data->mlx_ptr, data->animation.sprite[i]);
+            data->animation.sprite[i] = NULL;
+        }
+    }
+}
+
+
+
 void display_map(t_data *data)
 {
     for (int y = 0; y < data->map.height; y++)
@@ -104,8 +121,6 @@ void display_map(t_data *data)
                 mlx_put_image_to_window(data->mlx_ptr, data->win_ptr, data->images[2].img, x * data->images[2].img_width, y * data->images[2].img_height);
             else if (data->map.map[y][x] == 'E')
                 mlx_put_image_to_window(data->mlx_ptr, data->win_ptr, data->images[3].img, x * data->images[3].img_width, y * data->images[3].img_height);
-            else if (data->map.map[y][x] == 'P')
-                mlx_put_image_to_window(data->mlx_ptr, data->win_ptr, data->images[4].img, x * data->images[4].img_width, y * data->images[4].img_height);
         }
     }
 }
@@ -346,6 +361,33 @@ void free_copy_map(t_map *map)
     free(map->copy_map);
 }
 
+
+void display_moves(t_data *data)
+{
+    char *move_count;
+    char *message;
+    // Convertir le nombre de mouvements en chaîne de caractères
+    move_count = ft_itoa(data->player.moves); 
+    if (!move_count)
+        return;
+
+    message = ft_strjoin("Moves: ", move_count); 
+    if (!message)
+    {
+        free(move_count);
+        return;
+    }
+
+    mlx_string_put(data->mlx_ptr, data->win_ptr, 10, 10, 0xFFFFFF, message);
+
+    // Libérer les chaînes de caractères allouées dynamiquement
+    free(move_count);
+    free(message);
+}
+
+
+
+
 void move_player(t_data *data, int new_x, int new_y)
 {
     if (new_x >= 0 && new_x < data->map.width && new_y >= 0 && new_y < data->map.height)
@@ -365,6 +407,7 @@ void move_player(t_data *data, int new_x, int new_y)
             data->player.moves++;
             printf("Player moved to (%d, %d). Total moves: %d\n", new_x, new_y, data->player.moves);
             display_map(data); // Redessine la carte
+            // display_moves(data); // Affiche les mouvements du joueur
         }
         if (data->map.map[new_y][new_x] == 'E' && data->coins == data->total_coins)
         {
@@ -495,6 +538,53 @@ int is_path_valid(t_map *map, int player_x, int player_y)
 }
 
 
+void load_sprites(t_data *data)
+{
+    data->animation.sprite[0] = mlx_xpm_file_to_image(data->mlx_ptr,
+        "/home/ramir/Ramirez/so_long/images/player1.xpm",
+        &data->animation.sprite_width, &data->animation.sprite_height);
+    data->animation.sprite[1] = mlx_xpm_file_to_image(data->mlx_ptr,
+        "/home/ramir/Ramirez/so_long/images/player2.xpm",
+        &data->animation.sprite_width, &data->animation.sprite_height);
+    data->animation.sprite[2] = mlx_xpm_file_to_image(data->mlx_ptr,
+        "/home/ramir/Ramirez/so_long/images/player3.xpm",
+        &data->animation.sprite_width, &data->animation.sprite_height);
+    if (!data->animation.sprite[0] || !data->animation.sprite[1] || !data->animation.sprite[2])
+    {
+        write(2, "Error loading sprites\n", 22);
+        exit(EXIT_FAILURE);
+    }
+    data->animation.current_frame = 0; // Initialiser à la première frame
+}
+
+
+int animate_sprite_display_moves_appel(t_data *data)
+{
+    static int frame_count = 0;
+
+    frame_count++;
+    if (frame_count >= 50) // Change la frame toutes les 10 itérations
+    {
+        frame_count = 0;
+        data->animation.current_frame = (data->animation.current_frame + 1) % 3;
+        //        		game->current_frame	|game->current_frame + 1|(game->current_frame + 1)%3
+        //intialisation : 	    0     		|            1 		    |               1		    | FRAME 1
+        //2eme animation:		1		    |	      	 2	        |		        2		    | FRAME 2
+        //3eme animation:		2		    |	      	 3	        |    0 (car 3 mod 3 = 0)    | FRAME 0 (on revient au début)
+        //4eme animation:		0		    |            1		    |		        1	       	| FRAME 1
+    }
+
+    display_moves(data);
+    
+    // Dessiner le sprite animé au-dessus de la carte
+    mlx_put_image_to_window(data->mlx_ptr, data->win_ptr,
+        data->animation.sprite[data->animation.current_frame],
+        data->player.x * data->images[0].img_width,
+        data->player.y * data->images[0].img_height);
+
+    return (0);
+}
+
 
 
 
@@ -531,12 +621,15 @@ int main()
     init_image(&data, 1, "/home/ramir/Ramirez/so_long/images/wall.xpm");
     init_image(&data, COIN, "/home/ramir/Ramirez/so_long/images/collectible.xpm");
     init_image(&data, EXIT, "/home/ramir/Ramirez/so_long/images/exit.xpm");
-    init_image(&data, PLAYER, "/home/ramir/Ramirez/so_long/images/player.xpm");
 
     //print la map original
     printf("\nla map de base : \n");
     for (int i = 0; i < data.map.height; i++)
         printf("%s", data.map.map[i]);
+
+
+    load_sprites(&data);
+
 
 
     if(valid_map(&data.map) < 0)
@@ -566,6 +659,8 @@ int main()
    
     mlx_hook(data.win_ptr, 2, 1L<<0, handle_keypress, &data); // KeyPress / KeyPressMask
     mlx_hook(data.win_ptr, 33, 1L<<17, ft_clean, &data); // ClientMessage / StructureNotifyMask (en gros quand on appuies sur la croix)  //pas compris comment on lis CLientMessage à ON_DESTROY dans la doc ?
+    mlx_loop_hook(data.mlx_ptr, (int (*)())animate_sprite_display_moves_appel, &data);  // mlx hook est prototypé comme ca : int mlx_loop_hook(void *mlx_ptr, int (*f)(void *), void *param);   alors on doit avoir une fonction qui retourne un int et qui prends en paramètre un void mais vu que ce n'est pas notre cas on doit le caster. d'ou le (int (*)())
+    
     mlx_loop(data.mlx_ptr);
     return (0);
 }
